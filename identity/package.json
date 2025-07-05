@@ -1,0 +1,8 @@
+{
+  "private": true,
+  "workspaces": [
+    "semaphore/apps/*",
+    "semaphore/packages/*",
+    "eeg-merkle-backend"
+  ]
+} 
