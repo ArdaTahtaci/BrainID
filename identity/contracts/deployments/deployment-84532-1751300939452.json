@@ -1,0 +1,12 @@
+{
+  "network": "baseSepolia",
+  "chainId": "84532",
+  "deployer": "0xe6714EA658792e3D249D0b6459e26417b1dF7e7B",
+  "timestamp": "2025-06-30T16:28:59.444Z",
+  "contracts": {
+    "SemaphoreVerifier": "0x4B98cA324e28f3DD971FDB7b144DcA8cEb3B52B5",
+    "EEGRegistry": "0x3189609743695911c270b2e053A589F9b742a9bf",
+    "EEGVerifier": "0xd4FaeD55603c2dBF43B41b67b6e78AeCd059AD9c",
+    "EEGGroup": "0x43D4c18Ba577999F5d1226B60b9835F155517ab3"
+  }
+}

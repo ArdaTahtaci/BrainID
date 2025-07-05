@@ -1,23 +1,11 @@
 {
-  "name": "worldcoin",
-  "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "name": "hardhat-project",
   "devDependencies": {
-    "@nomicfoundation/hardhat-chai-matchers": "^2.0.9",
-    "@nomicfoundation/hardhat-ethers": "^3.0.9",
     "@nomicfoundation/hardhat-toolbox": "^6.0.0",
-    "chai": "^4.5.0",
-    "ethers": "^6.14.4",
     "hardhat": "^2.25.0"
   },
   "dependencies": {
-    "dotenv": "^16.6.1"
+    "@zk-kit/lean-imt.sol": "^2.0.1",
+    "dotenv": "^17.0.0"
   }
 }
