@@ -2,6 +2,7 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { hashFeatures } from '../services/poseidon';
 import { addLeaf, generateProof, getRoot } from '../services/merkle';
+import { createIdentityFromEEG } from '../services/proof';
 
 const router = Router();  // <-- kesinlikle express() veya default import değil
 
@@ -10,7 +11,7 @@ router.get('/health', (req: Request, res: Response) => {
     res.json({ status: 'OK' });
 });
 
-// 2) EEG özelliklerini al, Poseidon hash’le, Merkle ağacına ekle
+// 2) EEG özelliklerini al, Identity commitment üret, Merkle ağacına ekle
 router.post(
     '/add',
     async (req: Request, res: Response, next: NextFunction) => {
@@ -21,10 +22,15 @@ router.post(
                 return;
             }
 
-            const leafHash = hashFeatures(features);
+            const identity = await createIdentityFromEEG(features);
+            const leafHash = BigInt(identity.commitment.toString());
             const index = await addLeaf(leafHash);
 
-            res.json({ index, leafHash: leafHash.toString() });
+            res.json({
+                index,
+                leafHash: leafHash.toString(),
+                identityCommitment: identity.commitment.toString()
+            });
             return;
         } catch (err: any) {
             next(err);
@@ -52,7 +58,7 @@ router.post(
     }
 );
 
-// 4) Güncel Merkle root’u döner
+// 4) Güncel Merkle root'u döner
 router.get(
     '/root',
     async (_req: Request, res: Response, next: NextFunction) => {
