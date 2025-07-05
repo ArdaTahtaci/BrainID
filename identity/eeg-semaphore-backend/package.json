@@ -1,0 +1,27 @@
+{
+  "name": "eeg-merkle-backend",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@zk-kit/imt": "^2.0.0-beta.8",
+    "circomlibjs": "^0.1.7",
+    "dotenv": "^17.0.0",
+    "express": "^5.1.0",
+    "level": "^10.0.0",
+    "poseidon-lite": "^0.3.0"
+  },
+  "devDependencies": {
+    "@types/circomlibjs": "^0.1.6",
+    "@types/express": "^5.0.3",
+    "@types/node": "^24.0.7",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.8.3"
+  }
+}
