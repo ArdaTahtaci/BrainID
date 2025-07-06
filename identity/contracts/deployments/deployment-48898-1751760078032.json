@@ -1,8 +1,8 @@
 {
-  "network": "baseSepolia",
-  "chainId": "84532",
+  "network": "zircuit",
+  "chainId": "48898",
   "deployer": "0xe6714EA658792e3D249D0b6459e26417b1dF7e7B",
-  "timestamp": "2025-06-30T16:28:59.444Z",
+  "timestamp": "2025-07-06T00:01:18.031Z",
   "contracts": {
     "SemaphoreVerifier": "0x4B98cA324e28f3DD971FDB7b144DcA8cEb3B52B5",
     "EEGRegistry": "0x3189609743695911c270b2e053A589F9b742a9bf",
