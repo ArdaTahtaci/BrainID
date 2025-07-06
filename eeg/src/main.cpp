@@ -6,8 +6,8 @@
 #include <Adafruit_ADS1X15.h>
 
 // WiFi configuration
-const char* ssid = "YOUR_WIFI_SSID";
-const char* password = "YOUR_WIFI_PASSWORD";
+const char* ssid = "AndroidAPC118";
+const char* password = "nulook222";
 
 // Create ADS1115 instances
 Adafruit_ADS1115 ads1; // Address 0x48 (GND)
@@ -20,15 +20,17 @@ AsyncWebSocket ws("/ws");
 // Data storage for real-time streaming
 float channelData[8];
 unsigned long lastSampleTime = 0;
-const unsigned long sampleInterval = 10; // 100Hz sampling (10ms intervals)
+const unsigned long sampleInterval = 50; // 20Hz sampling (50ms intervals) - Good balance for brain analysis
+unsigned long lastWebSocketSend = 0;
 
 // EEG channel configuration
-const int16_t GAIN_TWOTHIRDS = 0x0000;  // 2/3x gain +/- 6.144V  1 bit = 0.1875mV
-const int16_t GAIN_ONE = 0x0200;        // 1x gain   +/- 4.096V  1 bit = 0.125mV
-const int16_t GAIN_TWO = 0x0400;        // 2x gain   +/- 2.048V  1 bit = 0.0625mV
-const int16_t GAIN_FOUR = 0x0600;       // 4x gain   +/- 1.024V  1 bit = 0.03125mV
-const int16_t GAIN_EIGHT = 0x0800;      // 8x gain   +/- 0.512V  1 bit = 0.015625mV
-const int16_t GAIN_SIXTEEN = 0x0A00;    // 16x gain  +/- 0.256V  1 bit = 0.0078125mV
+// Note: Gain constants are now defined in Adafruit_ADS1X15.h as adsGain_t enum
+
+// Function declarations
+void readAllChannels();
+void sendDataToClients();
+void onWebSocketEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType type, void *arg, uint8_t *data, size_t len);
+String getHTMLPage();
 
 void setup() {
   Serial.begin(115200);
@@ -43,8 +45,8 @@ void setup() {
     while (1);
   }
   
-  if (!ads2.begin(0x49)) {
-    Serial.println("Failed to initialize ADS1115 #2 (0x49)");
+  if (!ads2.begin(0x4B)) {
+    Serial.println("Failed to initialize ADS1115 #2 (0x4B)");
     while (1);
   }
   
@@ -113,30 +115,61 @@ void readAllChannels() {
   channelData[2] = ads1.computeVolts(ads1.readADC_SingleEnded(2)) * 1000000;
   channelData[3] = ads1.computeVolts(ads1.readADC_SingleEnded(3)) * 1000000;
   
-  // Read ADS1115 #2 (0x49) - Channels 4-7
+  // Read ADS1115 #2 (0x4B) - Channels 4-7
   channelData[4] = ads2.computeVolts(ads2.readADC_SingleEnded(0)) * 1000000; // Convert to microvolts
   channelData[5] = ads2.computeVolts(ads2.readADC_SingleEnded(1)) * 1000000;
   channelData[6] = ads2.computeVolts(ads2.readADC_SingleEnded(2)) * 1000000;
   channelData[7] = ads2.computeVolts(ads2.readADC_SingleEnded(3)) * 1000000;
+  
+  // Validate all channel data to prevent JSON parsing errors
+  for (int i = 0; i < 8; i++) {
+    if (isnan(channelData[i]) || isinf(channelData[i])) {
+      channelData[i] = 0.0; // Replace invalid values with 0
+    }
+    // Clamp extreme values that might cause issues
+    if (channelData[i] > 1000000) channelData[i] = 1000000;
+    if (channelData[i] < -1000000) channelData[i] = -1000000;
+  }
 }
 
 void sendDataToClients() {
   if (ws.count() > 0) {
-    // Create JSON object
-    DynamicJsonDocument doc(1024);
+    // Limit connections to prevent overflow
+    if (ws.count() > 3) {
+      Serial.println("Too many WebSocket connections - limiting to 3");
+      ws.closeAll();
+      return;
+    }
+    
+    // Create JSON object with exact format Python backend expects
+    DynamicJsonDocument doc(512);
     doc["timestamp"] = millis();
     JsonArray channels = doc.createNestedArray("channels");
     
     for (int i = 0; i < 8; i++) {
       JsonObject channel = channels.createNestedObject();
       channel["id"] = i;
-      channel["value"] = channelData[i];
-      channel["ads"] = (i < 4) ? 1 : 2;
-      channel["pin"] = i % 4;
+      channel["value"] = channelData[i];  // Ensure this is always a valid number
+      channel["ads"] = (i < 4) ? 1 : 2;   // Required by Python backend
+      channel["pin"] = i % 4;             // Required by Python backend
     }
     
     String jsonString;
     serializeJson(doc, jsonString);
+    
+    // Debug: Print detailed info about what we're sending
+    static unsigned long lastDebugPrint = 0;
+    if (millis() - lastDebugPrint > 5000) { // Every 5 seconds
+      Serial.println("=== DEBUG INFO ===");
+      Serial.println("Channels being sent: " + String(channels.size()));
+      for (int i = 0; i < 8; i++) {
+        Serial.println("Channel " + String(i) + ": " + String(channelData[i]) + " µV");
+      }
+      Serial.println("JSON size: " + String(jsonString.length()) + " bytes");
+      Serial.println("JSON being sent: " + jsonString);
+      Serial.println("=================");
+      lastDebugPrint = millis();
+    }
     
     // Send to all connected clients
     ws.textAll(jsonString);

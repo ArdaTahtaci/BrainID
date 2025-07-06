@@ -18,10 +18,10 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 class BrainAuthProcessor:
-    def __init__(self, sample_rate=100, buffer_duration=2.0):
+    def __init__(self, sample_rate=20, buffer_duration=2.0):  # 20Hz for good analysis
         self.sample_rate = sample_rate
         self.buffer_duration = buffer_duration
-        self.buffer_size = int(sample_rate * buffer_duration)  # 200 samples for 2 seconds
+        self.buffer_size = int(sample_rate * buffer_duration)  # 40 samples for 2 seconds at 20Hz
         self.num_channels = 8
         
         # Frequency bands (Hz)
@@ -289,23 +289,71 @@ class ESP32Client:
         
     def on_message(self, ws, message):
         try:
+            # Log the raw message for debugging
+            logger.info(f"Raw message received: {message[:200]}...")  # First 200 chars
+            
             data = json.loads(message)
+            logger.info(f"Parsed JSON keys: {list(data.keys())}")
+            
             if 'channels' in data:
-                # Extract channel values
-                channel_values = [channel['value'] for channel in data['channels']]
+                logger.info(f"=== DETAILED CHANNEL DEBUG ===")
+                logger.info(f"Channels array length: {len(data['channels'])}")
                 
-                # Add to processor
-                processor.add_sample(channel_values)
+                # Log ALL channels received
+                for i, channel in enumerate(data['channels']):
+                    logger.info(f"Channel {i}: {channel}")
                 
-                # Emit to web clients
-                socketio.emit('eeg_data', {
-                    'channels': channel_values,
-                    'timestamp': data.get('timestamp', time.time()),
-                    'buffer_ready': processor.get_buffer_status()
-                })
+                # Extract channel values with error handling
+                channel_values = []
+                for i, channel in enumerate(data['channels']):
+                    if isinstance(channel, dict) and 'value' in channel:
+                        try:
+                            value = float(channel['value'])
+                            channel_values.append(value)
+                            logger.info(f"Successfully extracted channel {i}: {value}")
+                        except (ValueError, TypeError) as e:
+                            logger.error(f"Invalid value in channel {i}: {channel.get('value', 'MISSING')} - {e}")
+                            channel_values.append(0.0)  # Default fallback
+                    else:
+                        logger.error(f"Channel {i} missing 'value' key or not dict: {channel}")
+                        channel_values.append(0.0)  # Default fallback
                 
+                logger.info(f"Total channel values extracted: {len(channel_values)}")
+                logger.info(f"Channel values: {channel_values}")
+                logger.info(f"==============================")
+                
+                if len(channel_values) == 8:  # Only process if we have all 8 channels
+                    # Add to processor
+                    processor.add_sample(channel_values)
+                    
+                    # Emit to web clients
+                    socketio.emit('eeg_data', {
+                        'channels': channel_values,
+                        'timestamp': data.get('timestamp', time.time()),
+                        'buffer_ready': processor.get_buffer_status()
+                    })
+                    
+                    # Log success occasionally
+                    if hasattr(self, '_message_count'):
+                        self._message_count += 1
+                    else:
+                        self._message_count = 1
+                        
+                    if self._message_count % 50 == 0:  # Every 50 messages
+                        logger.info(f"Successfully processed {self._message_count} messages")
+                else:
+                    logger.error(f"❌ CHANNEL COUNT MISMATCH: Expected 8 channels, got {len(channel_values)}")
+                    logger.error(f"❌ This means {8 - len(channel_values)} channels are missing!")
+            else:
+                logger.error(f"No 'channels' key in message. Available keys: {list(data.keys())}")
+                
+        except json.JSONDecodeError as e:
+            logger.error(f"JSON decode error: {e} - Raw message: {message[:100]}...")
         except Exception as e:
             logger.error(f"Error processing ESP32 message: {e}")
+            logger.error(f"Message content: {message[:200]}...")
+            import traceback
+            logger.error(f"Full traceback: {traceback.format_exc()}")
             
     def on_error(self, ws, error):
         logger.error(f"ESP32 WebSocket error: {error}")

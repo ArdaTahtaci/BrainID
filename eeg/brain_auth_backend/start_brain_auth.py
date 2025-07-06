@@ -57,20 +57,28 @@ def check_python_version():
 
 def check_dependencies():
     """Check if all required dependencies are installed"""
-    required_packages = [
-        'flask', 'flask-socketio', 'numpy', 'scipy', 'websocket-client',
-        'scikit-learn', 'matplotlib', 'pandas', 'cryptography'
-    ]
+    # Map pip package names to Python import names
+    required_packages = {
+        'flask': 'flask',
+        'flask-socketio': 'flask_socketio',
+        'numpy': 'numpy',
+        'scipy': 'scipy',
+        'websocket-client': 'websocket',
+        'scikit-learn': 'sklearn',
+        'matplotlib': 'matplotlib',
+        'pandas': 'pandas',
+        'cryptography': 'cryptography'
+    }
     
     missing_packages = []
     
-    for package in required_packages:
+    for pip_name, import_name in required_packages.items():
         try:
-            __import__(package.replace('-', '_'))
-            logger.info("✓ %s installed", package)
+            __import__(import_name)
+            logger.info("✓ %s installed", pip_name)
         except ImportError:
-            missing_packages.append(package)
-            logger.warning("✗ %s NOT installed", package)
+            missing_packages.append(pip_name)
+            logger.warning("✗ %s NOT installed", pip_name)
     
     if missing_packages:
         logger.error("Missing packages: %s", ', '.join(missing_packages))
